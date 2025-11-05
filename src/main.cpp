@@ -33,12 +33,6 @@ static void copy_buffers(u32 unused);
 
 int main(void)
 {
-	s32 ret;
-
-	char localip[16] = { 0 };
-	char gateway[16] = { 0 };
-	char netmask[16] = { 0 };
-
 	Mtx		view;
 	Mtx44	projection;
 	GXColor backgroundColor = { 0, 0, 0, 255 };
@@ -55,23 +49,12 @@ int main(void)
 	screenMode = VIDEO_GetPreferredMode(NULL);
 
 	frameBuffer = MEM_K0_TO_K1(SYS_AllocateFramebuffer(screenMode));
-	console_init(frameBuffer, 20, 20, screenMode->fbWidth - 20, screenMode->xfbHeight - 20, screenMode->fbWidth * VI_DISPLAY_PIX_SZ);
 
 	VIDEO_Configure(screenMode);
 	VIDEO_SetNextFramebuffer(frameBuffer);
 	VIDEO_SetBlack(false);
 	VIDEO_Flush();
 	VIDEO_WaitVSync();
-
-	ret = if_config(localip, netmask, gateway, true, 20);
-	if (ret >= 0)
-	{
-		printf("network configured, ip: %s, gw: %s, mask %s\n", localip, gateway, netmask);
-	}
-	else
-	{
-		printf("network configuration failed!\n");
-	}
 
 	printf("\nPress A button to continue to THE AMAZING MR QUAD...\n");
 
