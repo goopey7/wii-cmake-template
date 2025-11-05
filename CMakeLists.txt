@@ -7,7 +7,7 @@ project(app LANGUAGES CXX VERSION 1.0.0)
 
 add_executable(${PROJECT_NAME}
     src/main.cpp
-	third_party/tracy/public/TracyClient.cpp
+	#third_party/tracy/public/TracyClient.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE third_party/tracy/public/)

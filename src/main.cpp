@@ -1,4 +1,4 @@
-#include "tracy/Tracy.hpp"
+//#include "tracy/Tracy.hpp"
 #include <gccore.h>
 #include <malloc.h>
 #include <math.h>
@@ -113,7 +113,7 @@ int main(void)
 
 	while (1)
 	{
-		ZoneScoped;
+		//ZoneScoped;
 
 		currentTime = gettime();
 		deltaTime = (float)ticks_to_nanosecs(currentTime - lastTime) / (float)TB_NSPERSEC;
@@ -137,7 +137,7 @@ int main(void)
 
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_B)
 		{
-			ZoneScopedN("B Button Input");
+			//ZoneScopedN("B Button Input");
 
 			volatile double x = 0.0;
 			for (int i = 0; i < 2000000; ++i)
@@ -146,14 +146,14 @@ int main(void)
 			}
 		}
 
-		FrameMark;
+		//FrameMark;
 	}
 	return 0;
 }
 
 void update_screen(Mtx viewMatrix, f32 angle)
 {
-	ZoneScopedN("Screen Update");
+	//ZoneScopedN("Screen Update");
 	Mtx modelView;
 	Mtx rotation;
 
