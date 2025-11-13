@@ -1,7 +1,7 @@
-#include "../third_party/tracy/public/common/TracySocket.hpp"
 #include "tracy/Tracy.hpp"
 #include <gccore.h>
 #include <malloc.h>
+#include <vector>
 #include <math.h>
 #include <network.h>
 #include <ogc/lwp.h>
@@ -30,6 +30,8 @@ u8 colors[] ATTRIBUTE_ALIGN(32) = {
 	0, 0, 255, 255,	 // blue (BR)
 	255, 255, 0, 255 // yellow (BL)
 };
+
+std::vector<void*> allocations;
 
 void		update_screen(Mtx viewMatrix, f32 angle);
 static void copy_buffers(u32 unused);
@@ -122,11 +124,13 @@ int main(void)
 
 		WPAD_ScanPads();
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME)
-			exit(0);
-
-		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_A)
 		{
-			ZoneScopedN("A Button Alloc");
+			return 0;
+		}
+
+		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_RIGHT)
+		{
+			ZoneScopedN("Mem Alloc Input");
 
 			// Allocate some memory
 			void* testMem = malloc(10000);
@@ -135,9 +139,19 @@ int main(void)
 			// Use it...
 			memset(testMem, 0, 10000);
 
-			// Free it
-			//TracyFreeN(testMem, "TestPool");
-			//free(testMem);
+			allocations.push_back(testMem);
+		}
+
+		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_LEFT)
+		{
+			ZoneScopedN("Mem Free Input");
+			if (!allocations.empty())
+			{
+				void* testMem = allocations.back();
+				allocations.pop_back();
+				TracyFreeN(testMem, "TestPool");
+				free(testMem);
+			}
 		}
 
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_B)
