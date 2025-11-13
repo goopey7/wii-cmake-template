@@ -1,13 +1,16 @@
-//#include "tracy/Tracy.hpp"
+#include "../third_party/tracy/public/common/TracySocket.hpp"
+#include "tracy/Tracy.hpp"
 #include <gccore.h>
 #include <malloc.h>
 #include <math.h>
 #include <network.h>
+#include <ogc/lwp.h>
+#include <ogc/lwp_watchdog.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <wiiuse/wpad.h>
-#include <ogc/lwp_watchdog.h>
 
 GXRModeObj*	 screenMode;
 static void* frameBuffer;
@@ -56,19 +59,6 @@ int main(void)
 	VIDEO_Flush();
 	VIDEO_WaitVSync();
 
-	printf("\nPress A button to continue to THE AMAZING MR QUAD...\n");
-
-	while (1)
-	{
-		WPAD_ScanPads();
-		u32 pressed = WPAD_ButtonsDown(0);
-		if (pressed & WPAD_BUTTON_A)
-			break;
-		if (pressed & WPAD_BUTTON_HOME)
-			exit(0);
-		VIDEO_WaitVSync();
-	}
-
 	VIDEO_SetPostRetraceCallback(copy_buffers);
 
 	fifoBuffer = MEM_K0_TO_K1(memalign(32, FIFO_SIZE));
@@ -110,10 +100,9 @@ int main(void)
 	GX_SetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
 	lastTime = gettime();
 
-
 	while (1)
 	{
-		//ZoneScoped;
+		ZoneScoped;
 
 		currentTime = gettime();
 		deltaTime = (float)ticks_to_nanosecs(currentTime - lastTime) / (float)TB_NSPERSEC;
@@ -135,9 +124,25 @@ int main(void)
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME)
 			exit(0);
 
+		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_A)
+		{
+			ZoneScopedN("A Button Alloc");
+
+			// Allocate some memory
+			void* testMem = malloc(10000);
+			TracyAllocN(testMem, 10000, "TestPool");
+
+			// Use it...
+			memset(testMem, 0, 10000);
+
+			// Free it
+			//TracyFreeN(testMem, "TestPool");
+			//free(testMem);
+		}
+
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_B)
 		{
-			//ZoneScopedN("B Button Input");
+			ZoneScopedN("B Button Input");
 
 			volatile double x = 0.0;
 			for (int i = 0; i < 2000000; ++i)
@@ -146,14 +151,14 @@ int main(void)
 			}
 		}
 
-		//FrameMark;
+		FrameMark;
 	}
 	return 0;
 }
 
 void update_screen(Mtx viewMatrix, f32 angle)
 {
-	//ZoneScopedN("Screen Update");
+	ZoneScopedN("Screen Update");
 	Mtx modelView;
 	Mtx rotation;
 
