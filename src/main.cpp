@@ -1,15 +1,18 @@
-#include "tracy/Tracy.hpp"
+#define HW_RVL 1
+#include "tracy/TracyC.h"
 #include <gccore.h>
 #include <malloc.h>
-#include <vector>
 #include <math.h>
 #include <network.h>
 #include <ogc/lwp.h>
 #include <ogc/lwp_watchdog.h>
+#include <ogc/system.h>
+#include <ogc/usbgecko.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <vector>
 #include <wiiuse/wpad.h>
 
 GXRModeObj*	 screenMode;
@@ -31,13 +34,46 @@ u8 colors[] ATTRIBUTE_ALIGN(32) = {
 	255, 255, 0, 255 // yellow (BL)
 };
 
-std::vector<void*> allocations;
-
 void		update_screen(Mtx viewMatrix, f32 angle);
 static void copy_buffers(u32 unused);
 
+static size_t	mem1_offset = 0;
+static uint8_t* mem1_base;
+static size_t	mem1_size;
+
+void init_mem1_region()
+{
+	void* lo = SYS_GetArena1Lo();
+	void* hi = (void*)((uintptr_t)SYS_GetArena1Hi() - 2 * 1024 * 1024);
+
+	mem1_base = (uint8_t*)lo;
+	mem1_size = (uintptr_t)hi - (uintptr_t)lo;
+
+	// Mark Arena1 as fully consumed so nothing else touches it
+	SYS_SetArena1Lo(hi);
+}
+
+static size_t	mem2_offset = 0;
+static uint8_t* mem2_base;
+static size_t	mem2_size;
+
+void init_mem2_region()
+{
+	void* lo = SYS_GetArena2Lo();
+	void* hi = (void*)((uintptr_t)SYS_GetArena2Hi() - 2 * 1024 * 1024);
+
+	mem2_base = (uint8_t*)lo;
+	mem2_size = (uintptr_t)hi - (uintptr_t)lo;
+
+	// Mark Arena2 as fully consumed so nothing else touches it
+	SYS_SetArena2Lo(hi);
+}
+
 int main(void)
 {
+	___tracy_startup_profiler();
+	// init_mem1_region();
+	init_mem2_region();
 	Mtx		view;
 	Mtx44	projection;
 	GXColor backgroundColor = { 0, 0, 0, 255 };
@@ -104,7 +140,7 @@ int main(void)
 
 	while (1)
 	{
-		ZoneScoped;
+		TracyCZone(ctx, 1);
 
 		currentTime = gettime();
 		deltaTime = (float)ticks_to_nanosecs(currentTime - lastTime) / (float)TB_NSPERSEC;
@@ -128,51 +164,55 @@ int main(void)
 			return 0;
 		}
 
+		/*
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_RIGHT)
 		{
-			ZoneScopedN("Mem Alloc Input");
+			ZoneScopedN("Mem1 Alloc Input");
 
-			// Allocate some memory
-			void* testMem = malloc(10000);
-			TracyAllocN(testMem, 10000, "TestPool");
-
-			// Use it...
+			void* testMem = mem1_base + mem1_offset;
+			TracyAllocN(testMem, 10000, "MEM_1");
 			memset(testMem, 0, 10000);
-
-			allocations.push_back(testMem);
+			mem1_offset += 10000;
 		}
+		*/
 
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_LEFT)
 		{
-			ZoneScopedN("Mem Free Input");
-			if (!allocations.empty())
-			{
-				void* testMem = allocations.back();
-				allocations.pop_back();
-				TracyFreeN(testMem, "TestPool");
-				free(testMem);
-			}
+			TracyCZone(b_ctx, 1);
+			TracyCZoneName(b_ctx, "Mem2 Alloc Input", 16);
+
+			void* testMem = mem2_base + mem2_offset;
+			TracyCAllocN(testMem, 4 * 1024 * 1024, "MEM_2");
+			memset(testMem, 0, 4 * 1024 * 1024);
+			mem2_offset += 4 * 1024 * 1024;
+
+			TracyCZoneEnd(b_ctx);
 		}
 
 		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_B)
 		{
-			ZoneScopedN("B Button Input");
+			TracyCZone(b_ctx, 1);
+			TracyCZoneName(b_ctx, "B button", 8);
 
 			volatile double x = 0.0;
 			for (int i = 0; i < 2000000; ++i)
 			{
 				x += sin(i * 0.001) * cos(i * 0.002);
 			}
+
+			TracyCZoneEnd(b_ctx);
 		}
 
-		FrameMark;
+		TracyCZoneEnd(ctx);
+		TracyCFrameMark;
 	}
+	___tracy_shutdown_profiler();
 	return 0;
 }
 
 void update_screen(Mtx viewMatrix, f32 angle)
 {
-	ZoneScopedN("Screen Update");
+	TracyCZoneN(screen_ctx, "Screen Update", strlen("Screen Update"));
 	Mtx modelView;
 	Mtx rotation;
 
@@ -201,6 +241,7 @@ void update_screen(Mtx viewMatrix, f32 angle)
 	readyForCopy = GX_TRUE;
 
 	VIDEO_WaitVSync();
+	TracyCZoneEnd(screen_ctx);
 	return;
 }
 
